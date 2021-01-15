@@ -1,19 +1,20 @@
 {
-  "name": "helpeth",
+  "name": "helpvap",
+  "namespace": "vaporyjs",
   "version": "0.3.0",
-  "description": "Help (with) Ethereum. Purists' commandline tool for key and transaction management.",
+  "description": "Help (with) Vapory. Purists' commandline tool for key and transaction management.",
   "bin": {
-    "helpeth": "./helpeth"
+    "helpvap": "./helpvap"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ethereumjs/helpeth.git"
+    "url": "git+https://github.com/vaporyjs/helpvap.git"
   },
   "keywords": [
-    "ethereum",
+    "vapory",
     "wallet",
     "keys",
     "signing"
@@ -21,18 +22,18 @@
   "author": "Alex Beregszaszi <alex@rtfs.hu>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/ethereumjs/helpeth/issues"
+    "url": "https://github.com/vaporyjs/helpvap/issues"
   },
-  "homepage": "https://github.com/ethereumjs/helpeth#readme",
+  "homepage": "https://github.com/vaporyjs/helpvap#readme",
   "dependencies": {
     "bip39": "^2.2.0",
-    "ethereumjs-icap": "^0.3.0",
-    "ethereumjs-tx": "^1.1.1",
-    "ethereumjs-units": "^0.1.0",
-    "ethereumjs-util": "^4.3.0",
-    "ethereumjs-wallet": "^0.5.0",
+    "vaporyjs-icap": "^0.3.1",
+    "vaporyjs-tx": "^1.3.3",
+    "vaporyjs-units": "^0.2.0",
+    "vaporyjs-util": "^5.1.5",
+    "vaporyjs-wallet": "^0.6.0",
     "prompt-sync": "^4.0.4",
-    "rlp": "^2.0.0",
+    "@vaporyjs/rlp": "^2.0.0",
     "yargs": "^4.3.1"
   },
   "yargs": {

@@ -2,16 +2,16 @@
 
 var fs = require('fs')
 var prompt = require('prompt-sync')()
-var ethWallet = require('ethereumjs-wallet')
-var ethICAP = require('ethereumjs-icap')
-var ethUnits = require('ethereumjs-units')
-var ethUtil = require('ethereumjs-util')
-var ethTx = require('ethereumjs-tx')
-var fakeEthTx = require('ethereumjs-tx/fake')
-var BN = ethUtil.BN
-var ethHDKey = require('ethereumjs-wallet/hdkey')
+var vapWallet = require('vaporyjs-wallet')
+var vapICAP = require('vaporyjs-icap')
+var vapUnits = require('vaporyjs-units')
+var vapUtil = require('vaporyjs-util')
+var vapTx = require('vaporyjs-tx')
+var fakeVapTx = require('vaporyjs-tx/fake')
+var BN = vapUtil.BN
+var vapHDKey = require('vaporyjs-wallet/hdkey')
 var bip39 = require('bip39')
-var RLP = require('rlp')
+var RLP = require('@vaporyjs/rlp')
 
 var yargs = require('yargs')
   .usage('Usage: $0 [command]')
@@ -54,7 +54,7 @@ var yargs = require('yargs')
   .command('keyDetails', 'Print key details')
   .command('bip32Details <path>', 'Print key details for a given path')
   .command('addressDetails <address>', 'Print details about an address')
-  .command('unitConvert <value> <from> <to>', 'Convert between Ethereum units')
+  .command('unitConvert <value> <from> <to>', 'Convert between Vapory units')
   .command('rlpInspect <rlp>', 'Inspect RLP encoded data')
   .command('keccak256 <data>', 'Create Keccak-256 hash of the supplied data')
   .strict()
@@ -102,14 +102,14 @@ function loadWallet () {
   var wallet
   if (argv.private) {
     try {
-      wallet = ethWallet.fromExtendedPrivateKey(argv.private)
+      wallet = vapWallet.fromExtendedPrivateKey(argv.private)
     } catch (e) {
-      wallet = ethWallet.fromPrivateKey(ethUtil.toBuffer(argv.private))
+      wallet = vapWallet.fromPrivateKey(vapUtil.toBuffer(argv.private))
     }
   } else if (argv.keyfile) {
     var keyfile = fs.readFileSync(argv.keyfile).toString()
     var password = ensurePassword()
-    wallet = ethWallet.fromV3(keyfile, password, true)
+    wallet = vapWallet.fromV3(keyfile, password, true)
   }
 
   return wallet
@@ -117,8 +117,8 @@ function loadWallet () {
 
 function printAddressDetails (address) {
   console.log('Address: ' + address)
-  console.log('Address (checksum): ' + ethUtil.toChecksumAddress(address))
-  console.log('ICAP: ' + ethICAP.fromAddress(address, true, true))
+  console.log('Address (checksum): ' + vapUtil.toChecksumAddress(address))
+  console.log('ICAP: ' + vapICAP.fromAddress(address, true, true))
 }
 
 function printWalletDetails (wallet, showPrivate) {
@@ -144,19 +144,19 @@ function printMaxCost (tx) {
   var gasPrice = new BN(tx.gasPrice, 10)
   var cost = gasPrice.mul(gasLimit)
 
-  console.log('Potential total transaction cost: ' + ethUnits.convert(cost, 'wei', 'eth') + ' ETH')
-  console.log('Minimum required account balance: ' + ethUnits.convert(value.add(cost), 'wei', 'eth') + ' ETH')
+  console.log('Potential total transaction cost: ' + vapUnits.convert(cost, 'wei', 'vap') + ' VAP')
+  console.log('Minimum required account balance: ' + vapUnits.convert(value.add(cost), 'wei', 'vap') + ' VAP')
 }
 
 const N_DIV_2 = new BN('7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0', 16)
 
 function printSigDetails (hash, r, s, v) {
   console.log('Message hash (keccak): ' + hash)
-  var pubKey = ethUtil.ecrecover(
-    ethUtil.toBuffer(hash),
-    ethUtil.toBuffer(parseInt(v)),
-    ethUtil.toBuffer(r),
-    ethUtil.toBuffer(s)
+  var pubKey = vapUtil.ecrecover(
+    vapUtil.toBuffer(hash),
+    vapUtil.toBuffer(parseInt(v)),
+    vapUtil.toBuffer(r),
+    vapUtil.toBuffer(s)
   )
 
   if (new BN(s).cmp(N_DIV_2) === 1) {
@@ -164,19 +164,19 @@ function printSigDetails (hash, r, s, v) {
   }
 
   console.log('Signed by:')
-  printAddressDetails(ethUtil.bufferToHex(ethUtil.publicToAddress(pubKey)))
+  printAddressDetails(vapUtil.bufferToHex(vapUtil.publicToAddress(pubKey)))
 }
 
 function convertValue (value) {
   if (/^\d+ \w+$/i.test(value)) {
-    return ethUnits.lazyConvert(value, 'wei').split(' ')[0]
+    return vapUnits.lazyConvert(value, 'wei').split(' ')[0]
   } else {
     return value
   }
 }
 
 function shadyparser (input) {
-  if (ethUtil.isHexPrefixed(input)) {
+  if (vapUtil.isHexPrefixed(input)) {
     return input
   } else {
     return '0x' + new BN(input, 10).toString(16)
@@ -187,7 +187,7 @@ var wallet
 
 switch (command) {
   case 'keyGenerate':
-    wallet = ethWallet.generate(argv.icapdirect === 'true')
+    wallet = vapWallet.generate(argv.icapdirect === 'true')
 
     switch (argv.format) {
       case 'v3':
@@ -217,33 +217,33 @@ switch (command) {
   case 'signMessage':
     wallet = loadWallet()
 
-    // NOTE: geth internally accepts any input and zero-pads it
+    // NOTE: gvap internally accepts any input and zero-pads it
     var msg = argv.message
     try {
       msg = fs.readFileSync(msg)
     } catch (e) {
-      msg = ethUtil.toBuffer(argv.message)
+      msg = vapUtil.toBuffer(argv.message)
     }
 
-    console.log('Input message: ' + ethUtil.bufferToHex(msg))
+    console.log('Input message: ' + vapUtil.bufferToHex(msg))
 
-    msg = ethUtil.sha3(msg)
-    console.log('Message hash (Keccak): ' + ethUtil.bufferToHex(msg))
+    msg = vapUtil.sha3(msg)
+    console.log('Message hash (Keccak): ' + vapUtil.bufferToHex(msg))
 
-    var sig = ethUtil.ecsign(msg, wallet.getPrivateKey())
+    var sig = vapUtil.ecsign(msg, wallet.getPrivateKey())
 
-    // geth (and the RPC eth_sign method) uses the 65 byte format used by Bitcoin
-    // FIXME: this might change in the future - https://github.com/ethereum/go-ethereum/issues/2053
-    sig = ethUtil.bufferToHex(Buffer.concat([ sig.r, sig.s, ethUtil.toBuffer(sig.v - 27) ]))
+    // gvap (and the RPC vap_sign method) uses the 65 byte format used by Bitcoin
+    // FIXME: this might change in the future - https://github.com/vaporyco/go-vapory/issues/2053
+    sig = vapUtil.bufferToHex(Buffer.concat([ sig.r, sig.s, vapUtil.toBuffer(sig.v - 27) ]))
 
     console.log('The signature: ' + sig)
     break
 
   case 'verifySig':
-    var sig = ethUtil.toBuffer(argv.sig)
+    var sig = vapUtil.toBuffer(argv.sig)
 
     var v = sig[64]
-    // support both versions of `eth_sign` responses
+    // support both versions of `vap_sign` responses
     if (v < 27) {
       v += 27
     }
@@ -272,7 +272,7 @@ switch (command) {
     console.log('Gas price: ' + gasPrice)
 
     /* eslint-disable new-cap */
-    var tx = new ethTx({
+    var tx = new vapTx({
       nonce: nonce,
       to: to,
       value: value,
@@ -287,7 +287,7 @@ switch (command) {
 
     printMaxCost(tx)
 
-    console.log('The signed transaction: ' + ethUtil.bufferToHex(tx.serialize()))
+    console.log('The signed transaction: ' + vapUtil.bufferToHex(tx.serialize()))
     break
 
   case 'assembleTx':
@@ -313,7 +313,7 @@ switch (command) {
     console.log('Signature s: ' + s)
 
     /* eslint-disable new-cap */
-    var tx = new fakeEthTx({
+    var tx = new fakeVapTx({
       nonce: nonce,
       to: to,
       value: value,
@@ -328,42 +328,42 @@ switch (command) {
 
     printMaxCost(tx)
 
-    console.log('The signed transaction: ' + ethUtil.bufferToHex(tx.serialize()))
+    console.log('The signed transaction: ' + vapUtil.bufferToHex(tx.serialize()))
     break
 
   case 'parseTx':
     /* eslint-disable new-cap */
-    var tx = new fakeEthTx(argv.tx)
+    var tx = new fakeVapTx(argv.tx)
     var value = new BN(tx.value).toString(10)
     var gasLimit = new BN(tx.gasLimit).toString(10)
     var gasPrice = new BN(tx.gasPrice).toString(10)
     /* eslint-enable new-cap */
 
-    console.log('Signed by: ' + ethUtil.bufferToHex(tx.from))
-    console.log('Nonce: ' + ethUtil.bufferToHex(tx.nonce))
-    console.log('To: ' + ethUtil.bufferToHex(tx.to))
-    console.log('Value: ' + value + ' (' + ethUnits.convert(value, 'wei', 'eth') + ' ETH)')
-    console.log('Data: ' + ethUtil.bufferToHex(tx.data))
+    console.log('Signed by: ' + vapUtil.bufferToHex(tx.from))
+    console.log('Nonce: ' + vapUtil.bufferToHex(tx.nonce))
+    console.log('To: ' + vapUtil.bufferToHex(tx.to))
+    console.log('Value: ' + value + ' (' + vapUnits.convert(value, 'wei', 'vap') + ' VAP)')
+    console.log('Data: ' + vapUtil.bufferToHex(tx.data))
     console.log('Gas limit: ' + gasLimit)
-    console.log('Gas price: ' + gasPrice + ' (' + ethUnits.convert(gasPrice, 'wei', 'gwei') + ' Gwei)')
+    console.log('Gas price: ' + gasPrice + ' (' + vapUnits.convert(gasPrice, 'wei', 'gwei') + ' Gwei)')
 
     printMaxCost(tx)
     break
 
   case 'addressDetails':
     var address = argv.address
-    if (ethICAP.isICAP(address)) {
+    if (vapICAP.isICAP(address)) {
       try {
-        address = ethICAP.toAddress(address)
+        address = vapICAP.toAddress(address)
       } catch (e) {
         abort('The address supplied is an Indirect ICAP')
       }
-    } else if (!ethUtil.isValidAddress(address)) {
+    } else if (!vapUtil.isValidAddress(address)) {
       abort('Invalid address')
     } else {
       address = address.toLowerCase()
 
-      if ((address !== argv.address) && !ethUtil.isValidChecksumAddress(argv.address)) {
+      if ((address !== argv.address) && !vapUtil.isValidChecksumAddress(argv.address)) {
         console.warn('The supplied address failed the checksum test. It might be invalid.')
       }
     }
@@ -372,20 +372,20 @@ switch (command) {
     break
 
   case 'unitConvert':
-    var ret = ethUnits.convert(argv.value, argv.from, argv.to)
+    var ret = vapUnits.convert(argv.value, argv.from, argv.to)
     console.log(argv.value + ' ' + argv.from + ' equals to ' + ret + ' ' + argv.to)
     break
 
   case 'bip32Details':
     var hdkey
     if (argv.mnemonic)
-      hdkey = ethHDKey.fromMasterSeed(bip39.mnemonicToSeed(argv.mnemonic))
+      hdkey = vapHDKey.fromMasterSeed(bip39.mnemonicToSeed(argv.mnemonic))
     else if (argv.private)
-      hdkey = ethHDKey.fromExtendedKey(argv.private)
+      hdkey = vapHDKey.fromExtendedKey(argv.private)
     else
       abort('A mnemonic or extended key is mandatory for this operation')
 
-    var wallet = ethWallet.fromExtendedPrivateKey(hdkey.derivePath(argv.path).privateExtendedKey())
+    var wallet = vapWallet.fromExtendedPrivateKey(hdkey.derivePath(argv.path).privateExtendedKey())
 
     console.log('Path: ' + argv.path)
     printWalletDetails(wallet)
@@ -400,7 +400,7 @@ switch (command) {
       }
 
       if (len <= 32) {
-        return new ethUtil.BN(val).toString(10)
+        return new vapUtil.BN(val).toString(10)
       }
     }
 
@@ -411,9 +411,9 @@ switch (command) {
       var item = rlp[i]
       var detail = toReadable(item)
       if (detail) {
-        console.log('  ' + ethUtil.bufferToHex(item) + ' (' + detail + ')')
+        console.log('  ' + vapUtil.bufferToHex(item) + ' (' + detail + ')')
       } else {
-        console.log('  ' + ethUtil.bufferToHex(item))
+        console.log('  ' + vapUtil.bufferToHex(item))
       }
     }
     break
@@ -423,9 +423,9 @@ switch (command) {
     try {
       data = fs.readFileSync(argv.data)
     } catch (e) {
-      data = ethUtil.toBuffer(argv.data)
+      data = vapUtil.toBuffer(argv.data)
     }
-    console.log('Input data: ' + ethUtil.bufferToHex(data))
-    console.log('Data hash: ' + ethUtil.sha3(data).toString('hex'))
+    console.log('Input data: ' + vapUtil.bufferToHex(data))
+    console.log('Data hash: ' + vapUtil.sha3(data).toString('hex'))
     break
 }
